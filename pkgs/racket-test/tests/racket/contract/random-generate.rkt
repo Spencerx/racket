@@ -639,3 +639,49 @@
      #:generate
      (λ (ctc) (λ (fuel) (contract-random-generate/choose number? 10)))))
   (check-not-exn (λ () (test-contract-generation (make-gen-choose/c)))))
+
+
+;; test simple seeding for current-contract-pseudo-random-generator
+(define (test-seeding ctc seed)
+  (define (seed-and-generate)
+    (parameterize ([current-pseudo-random-generator (current-contract-pseudo-random-generator)])
+      (random-seed seed))
+    (contract-random-generate ctc))
+
+  (define generated1 (seed-and-generate))
+  (define generated2 (seed-and-generate))
+  
+  (unless (equal? generated1 generated2)
+    (error 'test-seeding
+           "contract-random-generate produced different values (~e and ~e) from the same seed (~e) on contract ~e"
+           generated1
+           generated2
+           seed
+           ctc)))
+
+(check-not-exn (λ () (test-seeding number? 43)))
+(check-not-exn (λ () (test-seeding string? 125290)))
+
+;; test seeding current-contract-pseudo-random-generator directly with vector
+(define (test-seed-by-vector ctc vec)
+  (define (vector-set-and-generate)
+    (vector->pseudo-random-generator!
+     (current-contract-pseudo-random-generator)
+     vec)
+    (contract-random-generate ctc))
+
+  (define generated1 (vector-set-and-generate))
+  (define generated2 (vector-set-and-generate))
+  
+  (unless (equal? generated1 generated2)
+    (error 'test-seed-by-vector
+           "contract-random-generate produced different values (~e and ~e) from the same vector state (~e) on contract ~e"
+           generated1
+           generated2
+           vec
+           ctc)))
+
+(check-not-exn (λ () (test-seed-by-vector number? '#(725075057 2853679635 3454706443 2613380953
+                                                               675109520 2167642600))))
+(check-not-exn (λ () (test-seed-by-vector string? '#(1406683016 984745282 2427635517 3466950283
+                                                                3024258523 1696545797))))
